@@ -1,0 +1,343 @@
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Text, Image, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { Button, RadioButton, TextInput } from 'react-native-paper';
+import { FontAwesome } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
+import * as Permissions from 'expo-permissions';
+import { Camera } from 'expo-camera';
+
+export default function telaAtivacao({ route, navigation }) {
+    //const numero_os = route.params.os;
+    const [location, setLocation] = useState(null);
+    const [hasPermission, setHasPermission] = useState(null);
+
+    const [problema_constatado, setProblema] = useState('');
+    const [solucao_aplicada, setSolucao] = useState('');
+    const [quantos_comodos, setQuantosComodos] = useState('');
+    const [realizado_testes, setRealzadoTestes] = useState(null);
+    const [fora_alcance, setForaAlcance] = useState(null);
+    const [segundo_roteador, setSegundoRoteador] = useState(null);
+    const [roteador_Melhor_Ponto, setRoteadortMelhorPonto] = useState(null);
+    const [cliente_solicitou_local_instalacao, setLocalInstalação] = useState(null);
+    const [numero_dispositivos_conectados, setNumeroDispositicosConectados] = useState(null);
+    const [smarttv_cabeada, setSmartTVCabeada] = useState(null);
+    const [fotoInstalacao, setFoto] = useState([]);
+    const [fotoCenario, setFotoCenario] = useState([]);
+    const [printScreen, setPrintScreen] = useState(null);
+    const [imagensExcluidas, setImagensExcluidas] = useState([])
+
+    const removerFotoLista = (foto) => {
+        setFoto(fotoInstalacao.filter(item => item.id !== foto))
+
+    };
+
+    function removerCenarioLista(foto) {
+        setFotoCenario(fotoCenario.filter(item => item.id !== foto));
+    };
+
+    function sendRoute(tipo) {
+        navigation.navigate('Câmera', { route: "Manutenção do cliente", tipo: tipo });
+    };
+
+    function confirmar(imagem, tipo) {
+        if (tipo == "serial") {
+            Alert.alert(
+                "Deseja excluir essa foto?",
+                "",
+                [
+                    {
+                        text: "Não",
+                        style: "cancel"
+                    },
+                    { text: "Sim", onPress: () => removerFotoLista(imagem) }
+                ],
+                { cancelable: false }
+            );
+        }
+        if (tipo == "cenario") {
+            Alert.alert(
+                "Deseja excluir essa foto?",
+                "",
+                [
+                    {
+                        text: "Não",
+                        style: "cancel"
+                    },
+                    { text: "Sim", onPress: () => removerCenarioLista(imagem) }
+                ],
+                { cancelable: false }
+            );
+        }
+    };
+
+    useEffect(() => {
+        if (route.params?.tipo === "serial") {
+            let index = fotoInstalacao.findIndex(val => val.id == route.params?.foto);
+            if (index == -1 && route.params?.foto !== undefined) {
+                navigation.addListener('focus', () => 
+                {
+                    setFoto([...fotoInstalacao, { id: `${route.params?.foto}` }]);
+                    navigation.setParams({foto:null, tipo: null});
+                    console.log(route)
+                })
+            }
+        }
+        if (route.params?.tipo === "cenario") {
+            let index = fotoCenario.findIndex(val => val.id == route.params?.foto);
+            if (index == -1 && route.params?.foto !== undefined) {
+                navigation.addListener('focus', () => setFotoCenario([...fotoInstalacao, { id: `${route.params?.foto}` }]))
+            }
+        }
+
+        (async () => {
+            const { status } = await Location.requestPermissionsAsync();
+            setHasPermission(status === 'granted');
+        })();
+
+        (async () => {
+            const { status } = await Camera.requestPermissionsAsync();
+            setHasPermission(status === 'granted');
+        })();
+        (async () => {
+            const { status } = await Permissions.askAsync(Permissions.MEDIA_LIBRARY);
+            setHasPermission(status === 'granted');
+        })();
+        (async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            setHasPermission(status === 'granted');
+        })();
+
+    }, [navigation, route, fotoInstalacao]);
+
+    async function localizacao() {
+        let text = "Aguarde...";
+        setLocation(text);
+        let location = await Location.getCurrentPositionAsync({});
+        let latitude = location.coords.latitude;
+        let longitude = location.coords.longitude;
+        let coordenada = latitude + "," + longitude;
+        setLocation(coordenada);
+    };
+
+    async function abrirGaleria() {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            quality: 1,
+        });
+        if (!result.cancelled) {
+            setPrintScreen(result.uri);
+        }
+    };
+
+    if (hasPermission === null) {
+        return <View />;
+    };
+    if (hasPermission === false) {
+        return <Text>Sem permissão necessária</Text>;
+    };
+
+
+    return (
+        <View style={estilo.viewStyle}>
+            <ScrollView>
+                <Text style={estilo.textCategoria}>Checklist de Atendimento</Text>
+                <TextInput
+                    mode='outlined'
+                    label="Problema Constatado"
+                    value={problema_constatado}
+                    onChangeText={problema_constatado => setProblema(problema_constatado)}
+                    multiline={true}
+                />
+                <TextInput
+                    mode='outlined'
+                    label="Solução Aplicada"
+                    value={solucao_aplicada}
+                    onChangeText={solucao_aplicada => setSolucao(solucao_aplicada)}
+                    multiline={true}
+                />
+                <TextInput
+                    mode='outlined'
+                    label="Quantos cômodos tem a casa?"
+                    value={quantos_comodos}
+                    onChangeText={quantos_comodos => setQuantosComodos(quantos_comodos)}
+                    multiline={true}
+                />
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setRealzadoTestes(newValue)} value={realizado_testes}>
+                        <Text style={estilo.textRadius}>Foi Realizado teste de sinal em todos os cômodos?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setForaAlcance(newValue)} value={fora_alcance}>
+                        <Text style={estilo.textRadius}>Algum dispositivo (SmartTV, Video Game, Computador) fora de um bom alcance que não está cabeado?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setSegundoRoteador(newValue)} value={segundo_roteador}>
+                        <Text style={estilo.textRadius}>Sugere um segundo roteador para cobrir algum "ponto cego" de WI-FI?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setRoteadortMelhorPonto(newValue)} value={roteador_Melhor_Ponto}>
+                        <Text style={estilo.textRadius}>O roteador foi instalado no melhor ponto?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setLocalInstalação(newValue)} value={cliente_solicitou_local_instalacao}>
+                        <Text style={estilo.textRadius}>Foi o cliente que solicitou o local da instalação?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setNumeroDispositicosConectados(newValue)} value={numero_dispositivos_conectados}>
+                        <Text style={estilo.textRadius}>Foi o cliente que solicitou o local da instalação?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+                <View style={estilo.viewBorderRadius}>
+                    <RadioButton.Group onValueChange={newValue => setSmartTVCabeada(newValue)} value={smarttv_cabeada}>
+                        <Text style={estilo.textRadius}>Possui SmartTV e está cabeada?</Text>
+                        <View style={{ flexDirection: "row", alignItems: 'center', alignSelf: 'center' }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Não</Text>
+                            <RadioButton value="Não" />
+                            <Text style={{ fontSize: 14, fontFamily: 'sans-serif' }}>Sim</Text>
+                            <RadioButton value="Sim" />
+                        </View>
+                    </RadioButton.Group>
+                </View>
+
+                <Text style={estilo.textCategoria}>Imagens</Text>
+                <View style={estilo.viewBorderRadiusCamera}>
+                    <Text style={estilo.textRadius}>Enviar foto no novo serial do equipamento:</Text>
+                    <TouchableOpacity onPress={() => { sendRoute("serial") }} style={{ alignItems: 'center' }}>
+                        <FontAwesome name="plus-circle" size={35} color="#121212" ></FontAwesome>
+                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+                        {fotoInstalacao.map((element, index) => (
+                            <TouchableOpacity key={index} onLongPress={() => { confirmar(element.id, "serial") }} style={{ marginBottom: 20, width: 100, height: 150 }}>
+                                <Image key={index} style={{ marginBottom: 20, width: 100, height: 150 }} source={{ uri: element.id }} resizeMode="contain" />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                <Button onPress={() => { console.log(fotoInstalacao) }}>Status</Button>
+                <Button onPress={() => { console.log(imagensExcluidas) }}>Status</Button>
+
+                <View style={estilo.viewBorderRadiusCamera}>
+                    <Text style={estilo.textRadius}>Enviar foto do cenário de instalação dos equipamentos:</Text>
+                    <TouchableOpacity onPress={() => { sendRoute("cenario") }} style={{ alignItems: 'center' }}>
+                        <FontAwesome name="plus-circle" size={35} color="#121212" ></FontAwesome>
+                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+                        {fotoCenario.map((element, index) => (
+                            <TouchableOpacity key={index} onLongPress={() => { confirmar(element.id, "cenario") }} style={{ marginBottom: 20, width: 100, height: 150 }}>
+                                <Image key={index} style={{ marginBottom: 20, width: 100, height: 150 }} source={{ uri: element.id }} resizeMode="contain" />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                <View style={estilo.viewBorderRadius}>
+                    <Text style={estilo.textRadius}>Print Screen da Velocidade do Cliente</Text>
+                    <TouchableOpacity onPress={abrirGaleria} style={{ alignItems: 'center' }}>
+                        <FontAwesome name="plus-circle" size={35} color="#121212" ></FontAwesome>
+                    </TouchableOpacity>
+                </View>
+
+                <Text style={estilo.textCategoria}>Coordenada Geográfica</Text>
+                <View style={estilo.viewBorderRadius}>
+                    <Text style={estilo.textRadius}>Coordenada GPS do local da instalação:</Text>
+                    <Text style={estilo.textgps}>{location}</Text>
+                    <TouchableOpacity onPress={localizacao} style={{ alignItems: 'center' }}>
+                        <FontAwesome name="crosshairs" size={40} color="#121212" ></FontAwesome>
+                    </TouchableOpacity>
+                </View>
+
+            </ScrollView>
+        </View>
+    );
+}
+
+const estilo = {
+    viewStyle: {
+        flex: 1,
+        padding: 10,
+        marginLeft: 0,
+        justifyContent: "space-between",
+        backgroundColor: "white",
+        borderRadius: 10,
+    },
+    viewBorderRadius: {
+        paddingLeft: 12,
+        borderRadius: 5,
+        borderWidth: 0.7,
+        paddingRight: 10,
+        borderRadius: 5,
+        marginTop: 8,
+        backgroundColor: "#f6f6f6"
+    },
+    viewBorderRadiusCamera: {
+        paddingLeft: 12,
+        borderRadius: 5,
+        borderWidth: 0.7,
+        paddingRight: 10,
+        borderRadius: 5,
+        marginTop: 8,
+        backgroundColor: "#f6f6f6",
+    },
+    textRadius:
+    {
+        fontFamily: 'sans-serif',
+        fontWeight: 'normal',
+        fontSize: 16
+    },
+    textCategoria: {
+        fontFamily: 'sans-serif',
+        fontWeight: 'normal',
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center'
+    },
+    textgps: {
+        fontFamily: 'sans-serif',
+        fontWeight: 'normal',
+        fontSize: 16,
+        textAlign: 'center'
+    }
+}
